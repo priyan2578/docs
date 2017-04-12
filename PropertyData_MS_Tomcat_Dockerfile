@@ -1,0 +1,18 @@
+FROM tomcatbaseimage:5.0
+#FROM tomcatbastimage:1.1
+MAINTAINER "GTR Admin" "gtr.admin@aexp.com"
+####RUN echo "JAVA_OPTS=\"\$JAVA_OPTS -Xms128m -Xmx256m -XX:MaxPermSize=128m -Djboss.bind.address=0.0.0.0 -Djboss.bind.address.management=0.0.0.0\"" >> $JBOSS_HOME/bin/standalone.conf
+COPY ./propertyData-1.0-SNAPSHOT.war $CATALINA_HOME/webapps/propertyData-1.0-SNAPSHOT.war
+RUN touch $CATALINA_HOME/webapps/propertyData-1.0-SNAPSHOT.war.dodeploy
+########ENV USER_HOME /opt/applogs
+EXPOSE 8080
+ENTRYPOINT $CATALINA_HOME/bin/catalina.sh run
+
+
+#FROM gtrbaseimage:1.5 
+#MAINTAINER "GTR Admin" "gtr.admin@aexp.com"
+#RUN echo "JAVA_OPTS=\"\$JAVA_OPTS -Xms256m -Xmx512m -XX:MaxPermSize=256m -Djboss.bind.address=0.0.0.0 -Djboss.bind.address.management=0.0.0.0 -Dorg.apache.coyote.http11.Http11Protocol.COMPRESSION=on -Dorg.apache.coyote.http11.Http11Protocol.COMPRESSION_MIME_TYPES=application/xml,application/json -Dorg.apache.coyote.http11.Http11Protocol.COMPRESSION_MIN_SIZE=20\"" >> $JBOSS_HOME/bin/standalone.conf
+#COPY ./propertyData-1.0-SNAPSHOT.war $JBOSS_HOME/standalone/deployments/propertyData-1.0-SNAPSHOT.war
+#RUN touch $JBOSS_HOME/standalone/deployments/propertyData-1.0-SNAPSHOT.war.dodeploy
+#EXPOSE 8080 9990
+#ENTRYPOINT $JBOSS_HOME/bin/standalone.sh

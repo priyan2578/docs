@@ -1,0 +1,156 @@
+
+To start docker daemon
+--------------------------
+
+1. systemctl start docker 
+
+Create the Ubuntu+JDK+EAP base image
+------------------------------------------
+1. Get Ubuntu+JDK base image from docker - https://hub.docker.com/r/n3ziniuka5/ubuntu-oracle-jdk/
+
+2. docker build -q -t priyan78/aegbt_gtr . - to build docker image
+   docker build --rm --no-cache  -t priyan78/aegbt_gtr . - to build with no cache and remove intermediate ones
+
+3. docker run -d -P priyan78/aegbt_gtr . - to run docker image
+   docker run -d -p 8081:8080 -p 9991:9990 -e "TZ=UTC,spring.profiles.active=e1" --name <service_name> priyan78/aegbt_gtr .
+   docker run -d -p 8081:8080 -p 9991:9990 -e "TZ=UTC,spring.profiles.active=e1" --name <service_name> priyan78/aegbt_gtr .
+  
+
+4. docker commit -m "<comment>" -a "<name>" <container_id> priyan78/aegbt_gtr:MT_JDK_EAP_V1 - to add tag to docker image
+
+5. docker login - login to docker
+
+6. docker push priyan78/aegbt_gtr - to push to docker hub repository 
+
+7. Docker hub URL - https://hub.docker.com/r/priyan78/aegbt_gtr/tags/
+
+8. docker run -i -t n3ziniuka5/ubuntu-oracle-jdk:14.10-JDK7u80 /bin/bash - to run the image
+
+docker run -i -t getproperty /bin/bash
+
+9. to open a shell into running docker container - 
+           sudo docker attach 665b4a1e17b6
+           sudo docker attach loving_heisenberg
+           sudo docker exec -i -t 665b4a1e17b6
+           sudo docker exec -i -t loving_heisenberg bash
+
+
+Create internal docker registry
+-------------------------------------
+
+1. Set up registry on build server -
+   docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
+2. Ensure that /etc/systemd/system/docker.service.d/http-proxy.conf file has the NO_PROXY setting for local .gbtad.com based servers -
+   Environment="HTTP_PROXY=http://10.156.240.11:8080/" "HTTPS_PROXY=https://10.156.240.11:8080/" "NO_PROXY=127.0.0.1,localhost,.gbtad.com,.local/"
+         
+3. Ensure that 'insecure_registry' option is set to the internal registry URL in /etc/systemd/system/docker.service.d/docker.conf file. If not present, add the line.
+   ExecStart=/usr/bin/docker daemon -H fd:// --graph="/app/docker" --storage-driver=devicemapper --insecure-registry="gtwtdlapgtrv03.gbt.gbtad.com:5000"
+4. Execute the following commands to reload daemon settings and restart docker
+   sudo systemctl daemon-reload
+   sudo systemctl restart docker
+5. Now you would be able to push the docker image to internal registry.   
+
+6. Tag the local image by executing command
+    docker tag getproperty:1.0 gtwtdlapgtrv03.gbt.gbtad.com:5000/getproperty:1.0
+7. Push the image by executing command -
+   docker push gtwtdlapgtrv03.gbt.gbtad.com:5000/getproperty:1.0
+
+
+To pull the internal registry image from another server
+-------------------------------------------------------------
+1. Ensure that /etc/systemd/system/docker.service.d/http-proxy.conf file has the NO_PROXY setting for local .gbtad.com based servers -
+   Environment="HTTP_PROXY=http://10.156.240.11:8080/" "HTTPS_PROXY=https://10.156.240.11:8080/" "NO_PROXY=127.0.0.1,localhost,.gbtad.com,.local/"
+         
+2. Ensure that 'insecure_registry' option is set to the internal registry URL in /etc/systemd/system/docker.service.d/docker.conf file. If not present, add the line.
+   ExecStart=/usr/bin/docker daemon -H fd:// --graph="/app/docker" --storage-driver=devicemapper --insecure-registry="gtwtdlapgtrv03.gbt.gbtad.com:5000"
+
+3. Execute the following commands to reload daemon settings and restart docker
+   sudo systemctl daemon-reload
+   sudo systemctl restart docker
+
+4. Now you would be able to pull the docker image from internal registry.   
+
+5. Execute below command to pull image from internal registry -
+   docker pull gtwtdlapgtrv03.gbt.gbtad.com:5000/getproperty:1.0
+
+
+
+
+Create multiple 
+container builds from multiple dockerfiles
+--------------------------------------------------------------
+1. Create separate directory for each microservice
+2. Place all the requisite files and the WARs inside the directory for that specific microservice.
+3. Place a file with name 'Dockerfile' inside that microservice directory.
+4. Update Dockerfile to include the microservice specific containers.
+5. Repeat steps 1-4 for each microservice for which containers need to be built.
+6. Execute below command to build the container for each microservice
+    docker build -q t <image_name> <directory path with microservice specific Dockerfile>
+    Example - docker build -q -t updatetraveller ./updatetraveler/
+
+
+Commands to modify docker output directory from default to another directory
+-----------------------------------------------------------------------------
+
+1. Created docker.conf file in /etc/systemd/system/docker.service.d directory
+2. Insert the following entries in docker.conf file
+
+[Service]
+Type=notify
+# the default is not to use systemd for cgroups because the delegate issues still
+# exists and systemd currently does not support the cgroup feature set required
+# for containers run by docker
+ExecStart=
+ExecStart=/usr/bin/docker daemon -H fd:// --graph="/app/docker" --storage-driver=devicemapper
+
+MountFlags=slave
+LimitNOFILE=1048576
+LimitNPROC=1048576
+LimitCORE=infinity
+TimeoutStartSec=0
+
+
+3. Created a file 'docker-storage' in /etc/sysconfig directory. Included the below entry in the file -
+     DOCKER_STORAGE_OPTIONS=/app/docker
+
+4. Execute command to flush changes
+    sudo systemctl daemon-reload
+5. Check the status of config values have been updated
+     systemctl show --property=Environment docker
+
+5. Restart the docker daemon
+    sudo systemctl restart docker
+
+
+Commands to check the docker daemon status
+----------------------------------------------
+
+systemctl status docker.service
+sudo journalctl -u docker
+
+Cleanup/Troubleshooting commands
+-------------------------------------
+
+Command to cleanup docker container logs - 
+
+echo "" > $(docker inspect --format='{{.LogPath}}' ae1d1ca35a32)
+echo "" > $(docker inspect --format='{{.LogPath}}' b768a26aa009)
+
+Command to remove multiple exited containers at one shot
+
+to stop all exited containers - docker stop $(docker ps -q -f status=exited)
+to remove all exited containers - docker rm $(docker ps -q -f status=exited)
+
+to start all exited containers - docker start $(docker ps -q -f status=exited)
+
+to check cpu/mem usage of containers on a host - docker stats $(docker ps --format '{{.Names}}')
+ 
+To delete all images with <none> tag - docker rmi -f $(docker images|grep -w 'none')
+
+
+To delete all images with a specific tag - docker rmi -f $(docker images|grep -w '1.0')
+
+to get restart policy of a specific container - docker inspect --format '{{ .HostConfig.RestartPolicy.Name }}' 64c366e163b4
+
+To get PID of a running container - docker inspect -f '{{ .State.Pid }}' 1feffb9e7595

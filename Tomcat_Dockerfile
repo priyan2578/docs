@@ -1,0 +1,14 @@
+FROM rhel 
+MAINTAINER "GTR Admin" "gtr.admin@aexp.com"
+LABEL Description="Base tomcat 8.x image on redhat linux"
+COPY ./apache-tomcat-8.0.35.zip /opt/apache-tomcat-8.0.35.zip 
+COPY ./jdk.zip /opt/jdk.zip
+COPY ./unzip /bin/unzip
+RUN /bin/unzip /opt/apache-tomcat-8.0.35.zip -d /opt/tomcat && \
+    /bin/unzip /opt/jdk.zip -d /usr/java && \
+    rm -f /opt/apache-tomcat-8.0.35.zip \
+     /opt/jdk.zip
+ENV JAVA_HOME /usr/java/jdk1.7.0_79
+ENV CATALINA_HOME /opt/tomcat/apache-tomcat-8.0.35
+COPY ./setenv.sh $CATALINA_HOME/bin
+RUN chmod 777 $CATALINA_HOME/bin/catalina.sh
